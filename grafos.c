@@ -2,195 +2,144 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define MAX_VERTICES 100
-
-// Grafo usando Matriz de Ajacencia
-typedef struct {
-    int numVertices;
-    int matriz[MAX_VERTICES][MAX_VERTICES];
-} GrafoMatriz;
-
-// Grafo usando Lista de Ajacencia
-typedef struct Nodo {
-    int vertice;
-    struct Nodo* prox;
-} Nodo;
+#define MAX_NOS 200
 
 typedef struct {
-    int numVertices;
-    Nodo* listaAdj[MAX_VERTICES];
-} GrafoListaAdj;
+    int matriz[MAX_NOS][MAX_NOS];
+    int total_nos;
+} Grafo;
 
-// Funções para Grafo de Matriz de Ajacencia
-GrafoMatriz* criarGrafoMatriz(int vertices) {
-    GrafoMatriz* grafo = (GrafoMatriz*)malloc(sizeof(GrafoMatriz));
-    grafo->numVertices = vertices;
-    
-    for (int i = 0; i < vertices; i++)
-        for (int j = 0; j < vertices; j++)
-            grafo->matriz[i][j] = 0;
-    
-    return grafo;
-}
-
-void adicionarArestaMatriz(GrafoMatriz* grafo, int u, int v) {
-    grafo->matriz[u][v] = 1;
-    grafo->matriz[v][u] = 1;
-}
-
-// Funções para Grafo de Lista de Ajacencia
-GrafoListaAdj* criarGrafoListaAdj(int vertices) {
-    GrafoListaAdj* grafo = (GrafoListaAdj*)malloc(sizeof(GrafoListaAdj));
-    grafo->numVertices = vertices;
-    
-    for (int i = 0; i < vertices; i++)
-        grafo->listaAdj[i] = NULL;
-    
-    return grafo;
-}
-
-void adicionarArestaLista(GrafoListaAdj* grafo, int u, int v) {
-    Nodo* novoNodo = (Nodo*)malloc(sizeof(Nodo));
-    novoNodo->vertice = v;
-    novoNodo->prox = grafo->listaAdj[u];
-    grafo->listaAdj[u] = novoNodo;
-
-    novoNodo = (Nodo*)malloc(sizeof(Nodo));
-    novoNodo->vertice = u;
-    novoNodo->prox = grafo->listaAdj[v];
-    grafo->listaAdj[v] = novoNodo;
-}
-
-void imprimirGrafoLista(GrafoListaAdj* grafo) {
-    for (int i = 0; i < grafo->numVertices; i++) {
-        Nodo* temp = grafo->listaAdj[i];
-        printf("Vertice %d: ", i);
-        while (temp) {
-            printf("%d -> ", temp->vertice);
-            temp = temp->prox;
-        }
-        printf("NULL\n");
-    }
-}
-
-// Função de Leitura de Arquivo e Carregamento do Grafo
-void lerArquivoGrafo(const char* nomeArquivo, GrafoMatriz* grafoMatriz, GrafoListaAdj* grafoLista, const char* tipo) {
-    FILE* arquivo = fopen(nomeArquivo, "r");
-    if (arquivo == NULL) {
-        printf("Erro ao abrir o arquivo.\n");
-        exit(1);
-    }
-
-    int u, v;
-    while (fscanf(arquivo, "%d %d", &u, &v) != EOF) {
-        if (tipo[0] == 'm') { // Matriz de Ajacencia
-            adicionarArestaMatriz(grafoMatriz, u, v);
-        } else { // Lista de Ajacencia
-            adicionarArestaLista(grafoLista, u, v);
+void inicializaGrafo(Grafo* g, int total_nos) {
+    g->total_nos = total_nos;
+    for (int i = 0; i < total_nos; i++) {
+        for (int j = 0; j < total_nos; j++) {
+            g->matriz[i][j] = 0;  // Inicializa com zero (sem ligação)
         }
     }
-
-    fclose(arquivo);
 }
 
-// Função para imprimir o caminho do BFS
-void imprimirCaminho(int antecessor[], int s, int t) {
-    if (t == -1) {
-        printf("Nao há caminho entre os vertices.\n");
-        return;
-    }
-    if (s == t) {
-        printf("%d ", s);
-    } else {
-        imprimirCaminho(antecessor, s, antecessor[t]);
-        printf("%d ", t);
+void adicionaLigacao(Grafo* g, int origem, int destino, int peso) {
+    if (peso > 0) {  // Adiciona ligação apenas se o peso for positivo
+        g->matriz[origem][destino] = peso;
+        g->matriz[destino][origem] = peso;  // Grafo não direcionado
     }
 }
 
-// Busca em Largura (BFS) usando Lista de Ajacencia
-void bfs(GrafoListaAdj* grafo, int s, int t) {
-    bool visitado[MAX_VERTICES] = { false };
-    int antecessor[MAX_VERTICES];
-    for (int i = 0; i < grafo->numVertices; i++) {
-        antecessor[i] = -1;
-    }
-
-    int fila[MAX_VERTICES];
+void buscaLargura(Grafo* g, int origem, int destino) {
+    bool visitado[MAX_NOS] = {false};
+    int fila[MAX_NOS], caminho[MAX_NOS];
     int inicio = 0, fim = 0;
 
-    fila[fim++] = s;
-    visitado[s] = true;
+    for (int i = 0; i < g->total_nos; i++) caminho[i] = -1;
+
+    fila[fim++] = origem;
+    visitado[origem] = true;
 
     while (inicio < fim) {
         int atual = fila[inicio++];
 
-        Nodo* adj = grafo->listaAdj[atual];
-        while (adj) {
-            int vizinho = adj->vertice;
-            if (!visitado[vizinho]) {
-                fila[fim++] = vizinho;
-                visitado[vizinho] = true;
-                antecessor[vizinho] = atual;
+        for (int i = 0; i < g->total_nos; i++) {
+            if (g->matriz[atual][i] > 0 && !visitado[i]) {
+                fila[fim++] = i;
+                visitado[i] = true;
+                caminho[i] = atual;
 
-                if (vizinho == t) {
-                    imprimirCaminho(antecessor, s, t);
-                    printf("\n");
-                    return;
+                if (i == destino) {  // Parar se o destino for encontrado
+                    inicio = fim;
+                    break;
                 }
             }
-            adj = adj->prox;
         }
     }
 
-    printf("Nao há caminho entre os vertices.\n");
+    if (!visitado[destino]) {
+        printf("Não há caminho entre %d e %d.\n", origem, destino);
+    } else {
+        printf("Caminho encontrado: ");
+        int trajeto[MAX_NOS], tam = 0;
+        for (int no = destino; no != -1; no = caminho[no]) {
+            trajeto[tam++] = no;
+        }
+
+        for (int i = tam - 1; i >= 0; i--) {
+            printf("%d ", trajeto[i]);
+        }
+        printf("\n");
+    }
 }
 
-// Busca em Profundidade (DFS) iterativa usando Lista de Ajacencia
-void dfsIterativo(GrafoListaAdj* grafo, int s) {
-    bool visitado[MAX_VERTICES] = { false };
-    int pilha[MAX_VERTICES];
-    int topo = -1;
+void buscaProfundidade(Grafo* g, int origem) {
+    bool visitado[MAX_NOS] = {false};
+    int pilha[MAX_NOS], topo = -1;
 
-    pilha[++topo] = s;
+    pilha[++topo] = origem;
 
     while (topo >= 0) {
         int atual = pilha[topo--];
 
         if (!visitado[atual]) {
+            printf("Visitando vértice %d\n", atual);
             visitado[atual] = true;
-            printf("%d ", atual);
 
-            Nodo* adj = grafo->listaAdj[atual];
-            while (adj) {
-                if (!visitado[adj->vertice]) {
-                    pilha[++topo] = adj->vertice;
+            for (int i = g->total_nos - 1; i >= 0; i--) {
+                if (g->matriz[atual][i] > 0 && !visitado[i]) {
+                    pilha[++topo] = i;
                 }
-                adj = adj->prox;
             }
         }
     }
     printf("\n");
 }
 
-// Função Principal
+void carregaArquivo(Grafo* g, const char* nome_arquivo) {
+    FILE* arquivo = fopen(nome_arquivo, "r");
+    if (!arquivo) {
+        printf("Erro ao abrir o arquivo.\n");
+        return;
+    }
+
+    int total_nos;
+    fscanf(arquivo, "%d", &total_nos);
+    inicializaGrafo(g, total_nos);
+
+    for (int i = 0; i < total_nos; i++) {
+        for (int j = 0; j < total_nos; j++) {
+            int peso;
+            fscanf(arquivo, "%d", &peso);
+            adicionaLigacao(g, i, j, peso);
+        }
+    }
+
+    fclose(arquivo);
+}
+
 int main() {
-    int numVertices = 5;
+    Grafo g;
+    int opcao, origem, destino;
 
-    // Criar Grafo como Lista de Ajacencia
-    GrafoListaAdj* grafoLista = criarGrafoListaAdj(numVertices);
-    adicionarArestaLista(grafoLista, 0, 1);
-    adicionarArestaLista(grafoLista, 0, 2);
-    adicionarArestaLista(grafoLista, 1, 3);
-    adicionarArestaLista(grafoLista, 3, 4);
+    carregaArquivo(&g, "pcv50.txt");
 
-    printf("Lista de Ajacencia:\n");
-    imprimirGrafoLista(grafoLista);
+    while (1) {
+        printf("\n1. Busca em Largura (BFS)\n2. Busca em Profundidade (DFS)\n3. Sair\nEscolha uma opção: ");
+        scanf("%d", &opcao);
 
-    printf("\nCaminho BFS de 0 a 4: ");
-    bfs(grafoLista, 0, 4);
-
-    printf("\nOrdem DFS iterativa a partir de 0: ");
-    dfsIterativo(grafoLista, 0);
+        switch (opcao) {
+            case 1:
+                printf("Digite o vértice de origem e destino: ");
+                scanf("%d %d", &origem, &destino);
+                buscaLargura(&g, origem, destino);
+                break;
+            case 2:
+                printf("Digite o vértice inicial para DFS: ");
+                scanf("%d", &origem);
+                buscaProfundidade(&g, origem);
+                break;
+            case 3:
+                exit(0);
+            default:
+                printf("Opção inválida!\n");
+        }
+    }
 
     return 0;
 }
