@@ -4,27 +4,73 @@
 
 #define MAX_NOS 200
 
+// Estrutura de Lista de Adjacência
+typedef struct No {
+    int destino;
+    int peso;
+    struct No* proximo;
+} No;
+
 typedef struct {
-    int matriz[MAX_NOS][MAX_NOS];
+    No* lista[MAX_NOS];  // Lista de adjacência
+    int matriz[MAX_NOS][MAX_NOS];  // Matriz de adjacência
     int total_nos;
 } Grafo;
 
+// Inicializa o grafo para ambas as representações (matriz e lista)
 void inicializaGrafo(Grafo* g, int total_nos) {
     g->total_nos = total_nos;
+    
+    // Inicializa a matriz com zeros
     for (int i = 0; i < total_nos; i++) {
         for (int j = 0; j < total_nos; j++) {
-            g->matriz[i][j] = 0;  // Inicializa com zero (sem ligação)
+            g->matriz[i][j] = 0;
         }
     }
-}
-
-void adicionaLigacao(Grafo* g, int origem, int destino, int peso) {
-    if (peso > 0) {  // Adiciona ligação apenas se o peso for positivo
-        g->matriz[origem][destino] = peso;
-        g->matriz[destino][origem] = peso;  // Grafo não direcionado
+    
+    // Inicializa as listas de adjacência como vazias
+    for (int i = 0; i < total_nos; i++) {
+        g->lista[i] = NULL;
     }
 }
 
+// Adiciona uma ligação no grafo para ambas as representações
+void adicionaLigacao(Grafo* g, int origem, int destino, int peso) {
+    if (peso > 0) {
+        // Matriz de adjacência
+        g->matriz[origem][destino] = peso;
+        g->matriz[destino][origem] = peso;  // Grafo não direcionado
+
+        // Lista de adjacência - adiciona nó na lista de origem
+        No* novoNo = (No*)malloc(sizeof(No));
+        novoNo->destino = destino;
+        novoNo->peso = peso;
+        novoNo->proximo = g->lista[origem];
+        g->lista[origem] = novoNo;
+
+        // Como é grafo não direcionado, adiciona também na lista do destino
+        novoNo = (No*)malloc(sizeof(No));
+        novoNo->destino = origem;
+        novoNo->peso = peso;
+        novoNo->proximo = g->lista[destino];
+        g->lista[destino] = novoNo;
+    }
+}
+
+// Função para imprimir a lista de adjacência
+void imprimeListaAdjacencia(Grafo* g) {
+    for (int i = 0; i < g->total_nos; i++) {
+        printf("Vértice %d: ", i);
+        No* atual = g->lista[i];
+        while (atual != NULL) {
+            printf("-> %d(peso %d) ", atual->destino, atual->peso);
+            atual = atual->proximo;
+        }
+        printf("\n");
+    }
+}
+
+// Busca em Largura (BFS) usando matriz de adjacência
 void buscaLargura(Grafo* g, int origem, int destino) {
     bool visitado[MAX_NOS] = {false};
     int fila[MAX_NOS], caminho[MAX_NOS];
@@ -44,7 +90,7 @@ void buscaLargura(Grafo* g, int origem, int destino) {
                 visitado[i] = true;
                 caminho[i] = atual;
 
-                if (i == destino) {  // Parar se o destino for encontrado
+                if (i == destino) {
                     inicio = fim;
                     break;
                 }
@@ -68,6 +114,7 @@ void buscaLargura(Grafo* g, int origem, int destino) {
     }
 }
 
+// Busca em Profundidade (DFS) usando matriz de adjacência
 void buscaProfundidade(Grafo* g, int origem) {
     bool visitado[MAX_NOS] = {false};
     int pilha[MAX_NOS], topo = -1;
@@ -91,6 +138,7 @@ void buscaProfundidade(Grafo* g, int origem) {
     printf("\n");
 }
 
+// Função para carregar arquivo e preencher o grafo
 void carregaArquivo(Grafo* g, const char* nome_arquivo) {
     FILE* arquivo = fopen(nome_arquivo, "r");
     if (!arquivo) {
@@ -120,7 +168,7 @@ int main() {
     carregaArquivo(&g, "pcv50.txt");
 
     while (1) {
-        printf("\n1. Busca em Largura (BFS)\n2. Busca em Profundidade (DFS)\n3. Sair\nEscolha uma opção: ");
+        printf("\n1. Busca em Largura (BFS)\n2. Busca em Profundidade (DFS)\n3. Imprimir Lista de Adjacência\n4. Sair\nEscolha uma opção: ");
         scanf("%d", &opcao);
 
         switch (opcao) {
@@ -135,6 +183,9 @@ int main() {
                 buscaProfundidade(&g, origem);
                 break;
             case 3:
+                imprimeListaAdjacencia(&g);
+                break;
+            case 4:
                 exit(0);
             default:
                 printf("Opção inválida!\n");
